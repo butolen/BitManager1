@@ -1,0 +1,46 @@
+﻿@page "/user/verify"
+@using WebGUI.Services
+@inject IUserService UserService
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center justify-content-center vh-100 bg-dark">
+    <div class="card shadow p-4 text-center" style="width: 100%; max-width: 400px;">
+        <h3 class="text-primary mb-3">Verifying Email…</h3>
+
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <p>@StatusMessage</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    private string StatusMessage = "";
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            StatusMessage = "Invalid link.";
+            return;
+        }
+
+        var result = UserService.CompleteEmailVerification(Token);
+        if (result == null)
+        {
+            StatusMessage = "Link is invalid or expired.";
+            return;
+        }
+
+        var parts = result.Split('|');
+        var email = Uri.EscapeDataString(parts[0]);
+        var password = Uri.EscapeDataString(parts[1]);
+
+        // 🔁 Redirect to login with email & password
+        Nav.NavigateTo($"/user/login/callback?email={email}&password={password}", forceLoad: true);
+    }
+}

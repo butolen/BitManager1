@@ -1,0 +1,85 @@
+﻿@page "/user/register"
+@using System.ComponentModel.DataAnnotations
+@using WebGUI.Services
+@inject IUserService UserService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Nav
+
+<div class="vh-100 vw-100 d-flex justify-content-center align-items-center btn-dark">
+    <div class="card shadow-lg p-4" style="width: 100%; max-width: 400px;">
+        <h3 class="text-center mb-3">Register</h3>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger">@ErrorMessage</div>
+        }
+
+        <EditForm Model="RegisterModel" OnValidSubmit="HandleRegister">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email address</label>
+                <InputText id="email" class="form-control" @bind-Value="RegisterModel.Email" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <InputText id="password" class="form-control" type="password" @bind-Value="RegisterModel.Password" />
+            </div>
+
+            <div class="mb-3">
+                <label for="confirm" class="form-label">Confirm password</label>
+                <InputText id="confirm" class="form-control" type="password" @bind-Value="RegisterModel.ConfirmPassword" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Register</button>
+
+            <div class="text-center mt-3">
+                <span>Already have an account? <a href="/user/login">Login</a></span>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private RegisterInput RegisterModel = new();
+    private string ErrorMessage = "";
+
+    private async Task HandleRegister()
+    {
+        if (RegisterModel.Password != RegisterModel.ConfirmPassword)
+        {
+            ErrorMessage = "Passwords do not match.";
+            return;
+        }
+
+        var success = await UserService.RegisterStartAsync(
+            RegisterModel.Email,
+            RegisterModel.Password
+        );
+
+        if (success)
+        {
+            Nav.NavigateTo($"/user/verify/sent", true);
+        }
+        else
+        {
+            ErrorMessage = "Registration failed. Email may already be in use.";
+        }
+    }
+
+    public class RegisterInput
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [MinLength(6, ErrorMessage = "Password needs to be at leas 6 characters")]
+        public string Password { get; set; } = "";
+
+        [Required(ErrorMessage = "Please confirm your password")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

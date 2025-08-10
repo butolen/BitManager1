@@ -1,0 +1,165 @@
+@attribute [Authorize]
+@page "/portfolio/rebalance"
+@using Domain.interfaces
+@using PortfolioApp.Enities
+@using WebGUI.Services
+@inject RebalanceService RebalanceService
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
+@inject IRepository<Wallet> WalletRepo
+
+<h3 class="text-center text-light my-4">🔄 Rebalance Portfolio</h3>
+
+@if (swaps.Count == 0)
+{
+    <p class="text-light text-center">✅ All target allocations are within tolerance. No swaps required.</p>
+}
+else
+{
+    <div class="table-responsive w-75 mx-auto">
+        <table class="table table-striped table-bordered table-dark">
+            <thead class="thead-light">
+                <tr>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>USD Value</th>
+                    <th>Amount</th>
+                    <th>Wallet</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in swaps)
+                {
+                    <tr>
+                        <td>@s.FromSymbol</td>
+                        <td>@s.ToSymbol</td>
+                        <td>$@s.UsdValue.ToString("F2")</td>
+                        <td>@s.Amount.ToString("F4")</td>
+                        <td class="text-truncate">@s.WalletId</td>
+                        <td>
+                            <button class="btn btn-success btn-sm"
+                                    disabled="@IsLoading(s)"
+                                    @onclick="() => ExecuteSwap(s)">
+                                @if (IsLoading(s))
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <span>Swap</span>
+                                }
+                            </button>
+                            @if (!string.IsNullOrWhiteSpace(GetStatus(s)))
+                            {
+                                <span class="ms-2 text-info">@((MarkupString)GetStatus(s))</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private string? userEmail;
+    private List<RebalanceSwap> swaps = new();
+    private Dictionary<RebalanceSwap, bool> loading = new();
+    private Dictionary<RebalanceSwap, string> status = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthProvider.GetAuthenticationStateAsync();
+        if (auth.User.Identity?.IsAuthenticated == true)
+        {
+            userEmail = auth.User.Identity.Name;
+            if (!string.IsNullOrWhiteSpace(userEmail))
+            {
+                try
+                {
+                    swaps = RebalanceService.DetermineSwaps(userEmail);
+                    loading = swaps.ToDictionary(x => x, x => false);
+                    status = swaps.ToDictionary(x => x, x => "");
+                }
+                catch (ArgumentException ex)
+                {
+                    swaps.Clear();
+                    loading.Clear();
+                    status.Clear();
+                    Console.WriteLine("❌ Duplicate key in target allocations: " + ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    swaps.Clear();
+                    loading.Clear();
+                    status.Clear();
+                    Console.WriteLine("❌ Rebalance failed: " + ex.Message);
+                }
+            }
+        }
+    }
+
+    private bool IsLoading(RebalanceSwap swap) =>
+        loading.TryGetValue(swap, out var l) && l;
+
+    private string GetStatus(RebalanceSwap swap) =>
+        status.TryGetValue(swap, out var s) ? s ?? "" : "";
+
+    private async Task ExecuteSwap(RebalanceSwap swap)
+    {
+        if (userEmail == null || swap == null)
+            return;
+
+        loading[swap] = true;
+        status[swap] = "Waiting for wallet…";
+        StateHasChanged();
+
+        try
+        {
+            var wallet = WalletRepo.Read(w => w.Address == swap.WalletId).FirstOrDefault();
+            if (wallet == null)
+            {
+                status[swap] = "Wallet not found!";
+                return;
+            }
+
+            var pubKey = await JS.InvokeAsync<string>("phantomInterop.connectWallet");
+            status[swap] = "Building transaction…";
+            StateHasChanged();
+
+            var txBase64 = await RebalanceService.BuildSwapTransactionAsync(swap, pubKey, wallet.Network);
+
+            status[swap] = "Signing & sending…";
+            StateHasChanged();
+
+            var sig = await JS.InvokeAsync<string>("phantomInterop.signAndSend", txBase64);
+            RebalanceService.RecordExecution(swap.Id, sig);
+
+            status[swap] = $"✅ Done! {sig[..8]}…";
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.Message.ToLowerInvariant();
+
+            if (msg.Contains("token_not_tradable"))
+            {
+                var tokenUrl = $"https://jup.ag/swap/{swap.FromAddress}-{swap.ToAddress}";
+                status[swap] = $"❌ Token not tradable via API. <a href='{tokenUrl}' target='_blank'>Swap manually on Jupiter</a>";
+            }
+            else if (msg.Contains("user rejected") || msg.Contains("user declined") || msg.Contains("phantom"))
+            {
+                status[swap] = "❌ User declined the transaction.";
+            }
+            else
+            {
+                status[swap] = "❌ An unexpected error occurred during swap.";
+            }
+        }
+        finally
+        {
+            loading[swap] = false;
+            StateHasChanged();
+        }
+    }
+}

@@ -1,0 +1,59 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager NavManager
+
+<PageTitle>BitManager</PageTitle>
+
+@{
+    var currentPath = NavManager.Uri.ToLower();
+    bool hideNav = currentPath.Contains("/user");
+}
+
+@if (!hideNav)
+{
+    <NavMenu />
+}
+
+
+
+    @Body
+<footer style="margin: 0;width: 100vw">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4 mb-4 mb-lg-0">
+                <img src="/images/logo.png" alt="BitManager Logo" class="footer-logo logo-img">
+                <h5 class="footer-title">BitManager GmbH</h5>
+                <p style="color: #6c757d" class="mb-1"><i class="bi bi-envelope-fill me-2"></i>support@bitmanager.io</p>
+                <p style="color: #6c757d" class="mb-1"><i class="bi bi-telephone-fill me-2"></i>+43 660 1234567</p>
+                <p style="color: #6c757d" class="mb-3"><i class="bi bi-geo-alt-fill me-2"></i>Hauptstraße 42, 1010 Wien, Österreich</p>
+                <div class="social-icons">
+                    <a href="#"><i class="bi bi-discord"></i></a>
+                    <a href="#"><i class="bi bi-youtube"></i></a>
+                    <a href="#"><i class="bi bi-telegram"></i></a>
+                    <a href="#"><i class="bi bi-twitter"></i></a>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4 mb-lg-0">
+                <h5 class="footer-title">Information</h5>
+                <ul class="footer-list">
+                    <li><a href="/support">Support</a></li>
+                    <li><a href="/about">About Us</a></li>
+                    <li><a href="/faq">FAQs</a></li>
+                    <li><a href="/terms">Terms & Conditions</a></li>
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-4">
+                <h5 class="footer-title">Products</h5>
+                <ul class="footer-list">
+                    <li><a href="/">Dashboard</a></li>
+                    <li><a href="/application/wallets">Wallet Management</a></li>
+                    <li><a href="/">Portfolio Overview</a></li>
+                    <li><a href="/application/targets">Rebalancing & Alerts</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            &copy; 2023 BitManager GmbH. Alle Rechte vorbehalten.
+        </div>
+    </div>
+</footer>

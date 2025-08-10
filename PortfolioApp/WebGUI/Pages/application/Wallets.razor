@@ -1,0 +1,231 @@
+﻿@page "/application/wallets"
+@inject NavigationManager Navigation
+@inject IWalletService WalletService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@using PortfolioApp.Enities
+@using Microsoft.AspNetCore.Components.Authorization
+@using WebGUI.Services
+
+<style>
+    body {
+        background-color: #121212 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: auto !important;
+    }
+
+    .spinner-border-sm {
+        width: 1.2rem;
+        height: 1.2rem;
+        border-width: 0.15em;
+    }
+
+    body, h1, h2, h3, h4, h5, h6, p, label, span, div, input, select, option, button {
+        color: #f5f5f5 !important;
+    }
+
+    .text-muted {
+        color: #bbbbbb !important;
+    }
+</style>
+
+<h3 class="text-white text-center mt-4">📊 Your Wallets</h3>
+
+<div class="container mt-4 text-white text-center">
+    @if (isInitialLoading)
+    {
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
+            <div class="loader"></div>
+        </div>
+    }
+    else
+    {
+        <div class="mb-5">
+            <h5 class="mb-3">Insert the address of the wallet you want to track</h5>
+
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <label for="walletAddress" class="form-label">Wallet Address</label>
+                    <input type="text" class="form-control bg-dark text-white border-secondary" id="walletAddress" @bind="newWalletAddress" placeholder="e.g. 4hHz1x...JfksdL" />
+
+                    <label for="walletNetwork" class="form-label mt-3">Network</label>
+                    <select class="form-select bg-dark text-white border-secondary" id="walletNetwork" @bind="newWalletNetwork">
+                        <option>solana</option>
+                        <!-- Weitere Chains folgen -->
+                    </select>
+
+                    <button class="btn btn-outline-info mt-4 w-100 fw-bold" @onclick="AddWalletAsync">➕ Add Wallet</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-3">
+            <button class="btn btn-outline-light" @onclick="RefreshAllWallets">🔄 Refresh All Wallets</button>
+        </div>
+
+        @if (wallets.Count == 0)
+        {
+            <p class="text-muted">You haven't added any wallets yet.</p>
+        }
+        else
+        {
+            <div class="row row-cols-1 row-cols-md-2 g-4">
+               @foreach (var wallet in wallets)
+{
+    <div class="card wallet-card bg-dark text-white shadow-sm border border-secondary">
+        <div class="card-body">
+            <h5 class="card-title text-info">@wallet.Address</h5>
+
+            @if (pendingWallets.Contains(wallet.Address))
+            {
+                <div class="d-flex justify-content-center align-items-center" style="min-height: 100px;">
+                    <div class="spinner-border spinner-border-sm text-light" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <p class="card-text text-light">
+                    <span class="text-muted">Network:</span> @wallet.Network<br />
+                    <span class="text-muted">Balance:</span> <strong class="text-success">@wallet.UsdValue.ToString("C2")</strong><br />
+                    <span class="text-muted">Last updated:</span> <span>@wallet.LastUpdated.ToLocalTime().ToString("g")</span>
+                </p>
+
+                @if (loadingWallets.Contains(wallet.Address))
+                {
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border spinner-border-sm text-light" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <button class="btn btn-outline-light w-100 mb-2" @onclick="() => RefreshWalletAsync(wallet.Address)">🔄 Refresh</button>
+                }
+
+                <button class="btn btn-outline-secondary w-100 mb-2" @onclick="@(() => Navigation.NavigateTo($"/application/wallet/{wallet.Address}"))">🔍 View Wallet</button>
+
+                <button class="btn btn-outline-danger w-100" @onclick="() => RemoveWalletAsync(wallet.Address)">🗑 Remove</button>
+            }
+        </div>
+    </div>
+}
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private string newWalletAddress = "";
+    private string newWalletNetwork = "solana";
+    private List<PortfolioApp.Enities.Wallet> wallets = new List<PortfolioApp.Enities.Wallet>();
+    private string? userEmail;
+    private bool isInitialLoading = true;
+    private HashSet<string> loadingWallets = new();
+    private HashSet<string> pendingWallets = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (!user.Identity?.IsAuthenticated ?? true)
+        {
+            Navigation.NavigateTo("/welcome");
+            return;
+        }
+
+        userEmail = user.Identity.Name;
+        await LoadWallets();
+    }
+
+    private async Task LoadWallets()
+    {
+        if (userEmail is null) return;
+        isInitialLoading = true;
+
+        wallets = await WalletService.GetWalletsForUserAsync(userEmail);
+
+        isInitialLoading = false;
+    }
+
+    private async Task AddWalletAsync()
+    {
+        if (string.IsNullOrWhiteSpace(newWalletAddress) || userEmail is null) return;
+
+        try
+        {
+            pendingWallets.Add(newWalletAddress);
+
+            // Dummy-Wallet hinzufügen, damit sofort gerendert wird
+            wallets.Add(new PortfolioApp.Enities.Wallet
+            {
+                Address = newWalletAddress,
+                Network = newWalletNetwork,
+                UsdValue = 0,
+                LastUpdated = DateTime.UtcNow
+            });
+
+            StateHasChanged(); // Spinner wird angezeigt
+
+            await WalletService.AddWalletAsync(newWalletAddress, newWalletNetwork, userEmail);
+            await WalletService.GetWalletValueUsdAsync(newWalletAddress, newWalletNetwork, userEmail);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("❌ Error adding wallet: " + ex.Message);
+        }
+
+        // Dummy entfernen und neu laden
+        wallets.RemoveAll(w => w.Address == newWalletAddress);
+        pendingWallets.Remove(newWalletAddress);
+        StateHasChanged();
+
+        newWalletAddress = "";
+        await LoadWallets();
+    }
+    private async Task RemoveWalletAsync(string address)
+    {
+        if (userEmail is null) return;
+
+        await WalletService.RemoveWalletAsync(address, userEmail);
+        await LoadWallets();
+    }
+
+    private async Task RefreshWalletAsync(string address)
+    {
+        if (userEmail is null) return;
+
+        loadingWallets.Add(address);
+        StateHasChanged();
+
+        await WalletService.GetWalletValueUsdAsync(address, "solana", userEmail);
+
+        wallets = await WalletService.GetWalletsForUserAsync(userEmail);
+        loadingWallets.Remove(address);
+        StateHasChanged();
+    }
+
+    private async Task RefreshAllWallets()
+    {
+        if (userEmail is null) return;
+
+        foreach (var wallet in wallets)
+        {
+            loadingWallets.Add(wallet.Address);
+        }
+        StateHasChanged();
+
+        foreach (var wallet in wallets)
+        {
+            await WalletService.GetWalletValueUsdAsync(wallet.Address, wallet.Network, userEmail);
+        }
+
+        wallets = await WalletService.GetWalletsForUserAsync(userEmail);
+        loadingWallets.Clear();
+        StateHasChanged();
+    }
+}

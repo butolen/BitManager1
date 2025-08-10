@@ -1,0 +1,88 @@
+﻿@page "/user/reset-password"
+@using System.ComponentModel.DataAnnotations
+@using WebGUI.Services
+@inject IUserService UserService
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center justify-content-center vh-100 bg-dark">
+    <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
+        <h3 class="text-center mb-4 text-primary">Reset Your Password</h3>
+
+        @if (!string.IsNullOrEmpty(SuccessMessage))
+        {
+            <div class="alert alert-success text-center">@SuccessMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger text-center">@ErrorMessage</div>
+        }
+
+        @if (!Success)
+        {
+            <EditForm Model="Model" OnValidSubmit="HandleResetPassword">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <InputText @bind-Value="Model.Password" class="form-control" type="password" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Confirm Password</label>
+                    <InputText @bind-Value="Model.ConfirmPassword" class="form-control" type="password" />
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Reset Password</button>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+    private bool Success = false;
+
+    private ResetPasswordModel Model = new();
+
+    private async Task HandleResetPassword()
+    {
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            ErrorMessage = "Invalid reset token.";
+            return;
+        }
+
+        if (Model.Password != Model.ConfirmPassword)
+        {
+            ErrorMessage = "Passwords do not match.";
+            return;
+        }
+
+        var result = await UserService.ResetPasswordWithTokenAsync(Token, Model.Password);
+        if (result)
+        {
+            Success = true;
+            SuccessMessage = "Your password was successfully updated. You may now log in.";
+            await Task.Delay(2500);
+            Nav.NavigateTo("/user/login", true);
+        }
+        else
+        {
+            ErrorMessage = "Reset failed. Token invalid or expired.";
+        }
+    }
+
+    public class ResetPasswordModel
+    {
+        [Required]
+        [MinLength(6)]
+        public string Password { get; set; } = "";
+
+        [Required]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}
