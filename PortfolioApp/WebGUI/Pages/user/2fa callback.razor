@@ -1,0 +1,44 @@
+﻿@page "/user/2fa/callback"
+@using WebGUI.Services
+@inject IUserService UserService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Nav
+
+<p>Verifiziere Code...</p>
+
+@code {
+    [Parameter] [SupplyParameterFromQuery] public string? Email { get; set; }
+    [Parameter] [SupplyParameterFromQuery] public string? Token { get; set; }
+    [Parameter] [SupplyParameterFromQuery] public string? Code { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Token) || string.IsNullOrWhiteSpace(Code))
+        {
+            Nav.NavigateTo("/user/login?error=missingparams", true);
+            return;
+        }
+
+        var user = UserService.GetByEmail(Email!);
+
+        if (user == null || user.TwoFactorTempToken != Token || user.TwoFactorExpiresAt < DateTime.UtcNow)
+        {
+            Nav.NavigateTo("/user/login?error=invalidtoken", true);
+            return;
+        }
+
+        if (user.TwoFactorCode != Code)
+        {
+            Nav.NavigateTo("/user/2fa?email=" + Uri.EscapeDataString(Email!) + "&token=" + Uri.EscapeDataString(Token!), true);
+            return;
+        }
+
+        user.TwoFactorCode = null;
+        user.TwoFactorTempToken = null;
+        user.TwoFactorExpiresAt = null;
+        UserService.Update(user);
+
+        await UserService.SignInAsync(user, HttpContextAccessor.HttpContext!);
+        Nav.NavigateTo("/welcome", true);
+    }
+}

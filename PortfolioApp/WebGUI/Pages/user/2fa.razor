@@ -1,0 +1,77 @@
+﻿@page "/user/2fa"
+@inject NavigationManager Nav
+@inject IUserService UserService
+@inject IHttpContextAccessor HttpContextAccessor
+
+@using System.ComponentModel.DataAnnotations
+@using WebGUI.Services
+
+<div class="vh-100 vw-100 d-flex justify-content-center align-items-center">
+    <div class="card shadow-lg p-4" style="width: 100%; max-width: 400px;">
+        <h4 class="text-center mb-3">Two-Factor Authentication</h4>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger">@ErrorMessage</div>
+        }
+
+        <EditForm Model="model" OnValidSubmit="VerifyCode">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <input type="hidden" @bind="model.Email" />
+
+            <div class="mb-3">
+                <label class="form-label">Enter 4-digit code</label>
+                <InputText class="form-control text-center" maxlength="4" @bind-Value="model.Code" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Verify</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] [SupplyParameterFromQuery] public string? Email { get; set; }
+
+    private TwoFactorModel model = new();
+    private string ErrorMessage = "";
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrWhiteSpace(Email))
+        {
+            Nav.NavigateTo("/user/login", true); // ✅ keine Header-Probleme
+            return;
+        }
+
+        model.Email = Email!;
+    }
+
+    private async Task VerifyCode()
+    {
+        var user = UserService.GetByEmail(model.Email);
+        if (user == null || user.TwoFactorCode != model.Code || user.TwoFactorExpiresAt < DateTime.UtcNow)
+        {
+            ErrorMessage = "Invalid or expired code.";
+            return;
+        }
+
+        // Token generieren, Code aber noch nicht löschen!
+        var token = Guid.NewGuid().ToString();
+        user.TwoFactorTempToken = token;
+        UserService.Update(user);
+
+        var url = $"/user/2fa/callback?email={Uri.EscapeDataString(model.Email)}&token={Uri.EscapeDataString(token)}&code={Uri.EscapeDataString(model.Code)}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    public class TwoFactorModel
+    {
+        [Required]
+        public string Email { get; set; } = "";
+
+        [Required, StringLength(4, MinimumLength = 4)]
+        public string Code { get; set; } = "";
+    }
+}

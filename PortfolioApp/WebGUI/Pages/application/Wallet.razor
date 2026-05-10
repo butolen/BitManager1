@@ -1,0 +1,91 @@
+﻿@page "/application/wallet/{address}"
+@inject IWalletService WalletService
+@inject AuthenticationStateProvider AuthStateProvider
+@attribute [Authorize]
+@using PortfolioApp.Enities
+@using Microsoft.AspNetCore.Components.Authorization
+@using WebGUI.Services
+<style>
+    body, h1, h2, h3, h4, h5, h6, p, label, span, div, input, select, option, button {
+        color: #f5f5f5 !important;
+    }
+
+    .text-muted {
+        color: #bbbbbb !important;
+    }
+  
+</style>
+@code {
+    [Parameter] public string address { get; set; }
+    private PortfolioApp.Enities.Wallet? wallet;
+    private List<CoinHolding> holdings = new List<CoinHolding>();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var email = auth.User.Identity?.Name;
+
+        if (string.IsNullOrWhiteSpace(email)) return;
+
+        wallet = (await WalletService.GetWalletsForUserAsync(email)).FirstOrDefault(w => w.Address == address);
+        if (wallet != null)
+        {
+            holdings = holdings = WalletService.GetHoldingsForWallet(wallet.Address, wallet.Email);
+        }
+
+        loading = false;
+    }
+}
+
+<h3 class="text-white mt-4 text-center">🔍 Wallet Detail View</h3>
+
+@if (loading)
+{
+    <div class="text-center mt-5">
+        <div class="spinner-border text-light" role="status"><span class="visually-hidden">Loading...</span></div>
+    </div>
+}
+else if (wallet is not null)
+{
+    <div class="container text-white mt-4">
+        <div class="card bg-dark border border-secondary p-4 mb-4">
+            <h4 class="text-info">Wallet Information</h4>
+            <p><strong>Address:</strong> @wallet.Address</p>
+            <p><strong>Network:</strong> @wallet.Network</p>
+            <p><strong>Total Value:</strong> @wallet.UsdValue.ToString("C2")</p>
+            <p><strong>Last Updated:</strong> @wallet.LastUpdated.ToLocalTime().ToString("g")</p>
+        </div>
+
+        <h5 class="text-info mb-3">Tokens in Wallet</h5>
+
+        @if (holdings.Count == 0)
+        {
+            <p class="text-muted">No tokens found for this wallet.</p>
+        }
+        else
+        {
+            <div class="row">
+                @foreach (var token in holdings.OrderByDescending(t => t.UsdValue))
+                {
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card bg-dark border border-secondary text-white p-3">
+                            <div class="d-flex align-items-center">
+                                <img src="@token.ImageUrl" alt="@token.Symbol" width="40" height="40" class="me-3 rounded" />
+                                <div>
+                                    <strong>@token.Symbol</strong><br />
+                                    <span class="text-muted">@token.TokenName</span><br />
+                                    <span class="text-success">@token.UsdValue.ToString("C2")</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-danger text-center">Wallet not found or access denied.</div>
+}

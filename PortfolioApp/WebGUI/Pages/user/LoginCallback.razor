@@ -1,0 +1,60 @@
+﻿
+@page "/user/login/callback"
+@using Model.Entities
+@using WebGUI.Services
+@inject NavigationManager Nav
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IUserService UserService
+
+<p>Logging in...</p>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Email { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Password { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Email) && !string.IsNullOrWhiteSpace(Password))
+        {
+            var user = UserService.GetByEmail(Email!);
+
+            if (user == null)
+            {
+                Nav.NavigateTo("/user/login?error=1", true);
+                return;
+            }
+
+            bool isValid = BCrypt.Net.BCrypt.Verify(Password, user.HashedPassword);
+            if (!isValid)
+            {
+                Nav.NavigateTo("/user/login?error=1", true);
+                return;
+            }
+
+            var httpContext = HttpContextAccessor.HttpContext!;
+            bool result = await UserService.LoginAsync(Email!, Password!, httpContext);
+
+            if (result)
+            {
+                Nav.NavigateTo("/welcome", true);
+            }
+            else if (user.TwoFactorEnabled && !string.IsNullOrWhiteSpace(user.TwoFactorTempToken))
+            {
+                Nav.NavigateTo($"/user/2fa?email={Uri.EscapeDataString(Email!)}&token={Uri.EscapeDataString(user.TwoFactorTempToken!)}", true);
+            }
+            else
+            {
+                Nav.NavigateTo("/user/login?error=2", true); // z. B. TempToken fehlt o.ä.
+            }
+        }
+        else
+        {
+            Nav.NavigateTo("/user/login", true);
+        }
+    }
+}

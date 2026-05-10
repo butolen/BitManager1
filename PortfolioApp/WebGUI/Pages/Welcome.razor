@@ -1,0 +1,151 @@
+﻿@page "/welcome"
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Navigation
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BitManager - Professionelles Krypto-Portfoliomanagement</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+</head>
+
+<body style="background-color: #202328">
+<!-- Navbar mit zentriertem Logo -->
+
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">Master Your Crypto Portfolio</h1>
+        <p class="hero-subtitle">BitManager provides advanced tools to track, analyze, and optimize your cryptocurrency investments across all exchanges and wallets in one secure dashboard.</p>
+    </div>
+</section>
+
+<!-- Carousel -->
+<div class="carousel-container">
+    <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+        </div>
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <img src="/images/carusell1.png" class="d-block w-100 carousel-image" alt="Crypto Portfolio">
+                <div class="carousel-caption">
+                    <h2 class="carousel-title">Track Your Portfolio</h2>
+                    <p class="carousel-text">Monitor your gains in real-time with beautiful visualizations and performance metrics.</p>
+                    <a href="/user/register" class="btn btn-primary btn-lg mt-2">GET STARTED</a>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="/images/carusell2.png" class="d-block w-100 carousel-image" alt="Crypto Analytics">
+                <div class="carousel-caption">
+                    <h2 class="carousel-title">Auto-Rebalancing</h2>
+                    <p class="carousel-text">Keep your portfolio aligned with your investment strategy automatically.</p>
+                    <a href="/user/register" class="btn btn-primary btn-lg mt-2">GET STARTED</a>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="/images/carusell3.jpg" class="d-block w-100 carousel-image" alt="Crypto Security">
+                <div class="carousel-caption">
+                    <h2 class="carousel-title">Advanced Analytics</h2>
+                    <p class="carousel-text">Visualize your crypto progress with powerful analytics tools.</p>
+                    <a href="/user/register" class="btn btn-primary btn-lg mt-2">GET STARTED</a>
+                </div>
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
+    </div>
+</div>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <h2 class="section-title">Core Features</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-box">
+                    <i class="bi bi-graph-up feature-icon"></i>
+                    <h3 class="feature-title">Portfolio Tracking</h3>
+                    <p class="feature-description">Visualize your holdings over time with detailed charts and performance metrics.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-box">
+                    <i class="bi bi-wallet2 feature-icon"></i>
+                    <h3 class="feature-title">Wallet Management</h3>
+                    <p class="feature-description">Organize all your crypto addresses and wallets in one secure location.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-box">
+                    <i class="bi bi-pie-chart feature-icon"></i>
+                    <h3 class="feature-title">Target Allocations</h3>
+                    <p class="feature-description">Define your investment goals and track your portfolio distribution.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-box">
+                    <i class="bi bi-bell feature-icon"></i>
+                    <h3 class="feature-title">Rebalancing & Alerts</h3>
+                    <p class="feature-description">Stay on track with automated rebalancing and custom alerts.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Video Section -->
+<section class="video-section">
+    <div class="container">
+        <h2 class="section-title">How BitManager Works</h2>
+        <div class="video-container">
+            <div class="video-wrapper">
+                <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="BitManager Introduction" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const myCarousel = document.getElementById('heroCarousel');
+    const carousel = new bootstrap.Carousel(myCarousel, {
+        interval: 5000,
+        wrap: true
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const featureBoxes = document.querySelectorAll('.feature-box');
+
+        featureBoxes.forEach(box => {
+            box.addEventListener('mouseenter', function () {
+                this.style.transform = 'translateY(-10px)';
+            });
+
+            box.addEventListener('mouseleave', function () {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+    });
+</script>
+</body>
+</html>
+
+@code {
+    private string path = "/user/register";
+}

@@ -1,0 +1,184 @@
+﻿@using WebGUI.Services
+@inject IUserService UserService
+@inject NavigationManager Nav
+@inject IHttpContextAccessor HttpContextAccessor
+@code {
+    private bool isLoggedIn;
+    private bool isAdmin;
+
+    protected override void OnInitialized()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+
+        isLoggedIn = user?.Identity?.IsAuthenticated ?? false;
+        isAdmin = user?.IsInRole("Admin") ?? false;
+    }
+
+    private async Task LogoutAsync()
+    {
+        await UserService.LogoutAsync(HttpContextAccessor.HttpContext);
+        Nav.NavigateTo("/user/login", forceLoad: true);
+    }
+}
+
+<style>
+    .custom-navbar {
+        background-color: var(--bg-secondary) !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        height: 100px;
+        display: flex;
+        align-items: center;
+    }
+
+    .navbar-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        height: 100px;
+        
+    }
+
+    .logo-wrapper {
+        width: 100px;
+        height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .logo-img {
+        height: auto;
+        max-height: 110px;        /* Optional größerer Zoom */
+        width: auto;
+        transform: scale(1.1);    /* Zoom ohne Abschneiden */
+        transform-origin: center;
+    }
+    .logo-img:hover {
+        transform: scale(1.15); /* Größer beim Hover */
+    }
+    .auth-buttons {
+        display: flex;
+        gap: 12px;
+        margin-left: auto;
+    }
+
+    .auth-buttons a.btn {
+        color: white !important;
+        background-color: #333 !important;
+        border: 1px solid #555;
+    }
+
+    .auth-buttons a.btn:hover {
+        background-color: #444 !important;
+    }
+
+    .register-btn {
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        color: white;
+        border: none;
+        box-shadow: 0 4px 15px rgba(41, 98, 255, 0.3);
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: var(--transition);
+    }
+
+    .register-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(41, 98, 255, 0.4);
+    }
+
+    .login-btn {
+        background-color: rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: var(--transition);
+    }
+
+    .login-btn:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .nav-link {
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .nav-link:hover {
+        text-decoration: underline;
+    }
+</style>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+<nav class="navbar custom-navbar">
+    <div class="navbar-container">
+        @if (!isLoggedIn)
+        {
+        <div class="logo-wrapper">
+            <img src="/images/logo.png" alt="Logo" class="logo-img" />
+        </div>
+        <div class="auth-buttons">
+            <a href="/user/login" class="btn login-btn">Login</a>
+            <a href="/user/register" class="btn register-btn">Register</a>
+        </div>
+        }
+        else
+        {
+        <!-- Eingeloggt -->
+        <div class="logo-wrapper">
+            <a href="/">
+                <img src="/images/logo.png" alt="BitManager Logo" class="logo-img" />
+            </a>
+        </div>
+
+        <div class="d-flex gap-4 align-items-center justify-content-center flex-grow-1">
+            <a href="/welcome" class="nav-link text-light">Welcome</a>
+            <a href="/" class="nav-link text-light">Dashboard</a>
+            <a href="/application/wallets" class="nav-link text-light">Wallets</a>
+            <a href="/application/targets" class="nav-link text-light">Portfolio Settings</a>
+    
+            @if (isAdmin)
+            {
+                <a href="/admin" class="nav-link text-warning fw-bold">Admin</a>
+            }
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <a href="/user/logout" class="btn register-btn">Logout</a>
+            <a href="/application/settings" class="profile-link">
+                @{
+                    var user = UserService.GetByEmail(HttpContextAccessor.HttpContext?.User?.Identity?.Name ?? "");
+                    var profileImage = user?.UserProfileImage;
+                }
+
+                @if (!string.IsNullOrEmpty(profileImage))
+                {
+                    <img src="@profileImage"
+                         alt="Profile"
+                         class="profile-img"
+                         style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover;" />
+                }
+                else
+                {
+                    <i class="bi bi-person-circle text-light fs-4"></i>
+                }
+            </a>
+        </div>
+        }
+    </div>
+</nav>

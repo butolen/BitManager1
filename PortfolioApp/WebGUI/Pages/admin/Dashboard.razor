@@ -1,0 +1,76 @@
+﻿@page "/admin"
+@attribute [Authorize(Roles = "Admin")]
+@using PortfolioApp.Enities
+@using WebGUI.Services
+@inject IAdminService AdminService
+@inject NavigationManager Nav
+
+<div class="container py-5 text-white">
+    <div class="text-center mb-4">
+        <h2 class="text-info">User Management</h2>
+        <p class="text-secondary">Manage users and view details</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="bg-dark border border-secondary rounded shadow-sm p-4">
+                <div class="mb-3">
+                    <input type="text" class="form-control bg-secondary text-white border-0" @bind="filter" placeholder="Filter by email or name..." />
+                </div>
+
+                <table class="table table-dark table-hover table-sm text-center align-middle">
+                    <thead class="bg-secondary text-white">
+                        <tr>
+                            <th scope="col">Email</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var user in FilteredUsers)
+                    {
+                        <tr>
+                            <td>@user.Email</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-danger" title="Delete"
+                                            @onclick="() => Delete(user.Email)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" title="Details"
+                                            @onclick='() => Nav.NavigateTo($"/admin/{Uri.EscapeDataString(user.Email)}")'>
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+
+                @if (!FilteredUsers.Any())
+                {
+                    <div class="text-muted text-center mt-3">No matching users found.</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string filter = "";
+    private List<User> users = new();
+
+    protected override void OnInitialized()
+    {
+        users = AdminService.GetAllUsersExceptAdmins().ToList();
+    }
+
+    private IEnumerable<User> FilteredUsers => users
+        .Where(u => string.IsNullOrWhiteSpace(filter) || u.Email.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+    private void Delete(string email)
+    {
+        AdminService.DeleteUser(email);
+        users = AdminService.GetAllUsersExceptAdmins().ToList();
+    }
+}

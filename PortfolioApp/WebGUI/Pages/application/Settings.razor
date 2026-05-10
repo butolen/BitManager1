@@ -1,0 +1,135 @@
+﻿@page "/application/settings"
+@inject IUserService UserService
+@inject IHttpContextAccessor HttpContextAccessor
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Forms
+@using WebGUI.Services
+
+<div class="container mt-5 text-light">
+    <h2 class="mb-4">User Settings</h2>
+
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="alert alert-info">@StatusMessage</div>
+    }
+
+    <EditForm Model="FormModel" OnValidSubmit="SaveChangesAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label for="email" class="form-label">Email (not editable)</label>
+            <InputText id="email" class="form-control" @bind-Value="FormModel.Email" disabled />
+        </div>
+
+        <div class="mb-3">
+            <label for="newPassword" class="form-label">New Password</label>
+            <InputText id="newPassword" type="password" class="form-control" @bind-Value="FormModel.NewPassword" />
+        </div>
+
+        <div class="mb-3">
+            <label for="confirmPassword" class="form-label">Confirm Password</label>
+            <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="FormModel.ConfirmPassword" />
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox id="twoFactor" class="form-check-input" @bind-Value="FormModel.TwoFactor" />
+            <label for="twoFactor" class="form-check-label">Enable Two-Factor Authentication</label>
+        </div>
+
+        <div class="mb-3">
+            <label for="profilePic" class="form-label">Profile Picture</label>
+            <InputFile OnChange="e => UploadedImage = e.File" class="form-control" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </EditForm>
+</div>
+
+<style>
+    body {
+        background-color: #121212;
+        color: #f1f1f1;
+    }
+
+    .form-label,
+    .form-control,
+    .form-check-label {
+        color: #f1f1f1;
+        background-color: #1e1e1e;
+        border-color: #444;
+    }
+
+    .form-control:disabled {
+        background-color: #2b2b2b;
+        color: #aaa;
+    }
+
+    .btn-primary {
+        background-color: #3b82f6;
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background-color: #2563eb;
+    }
+</style>
+
+@code {
+    private UserSettingsModel FormModel = new();
+    private IBrowserFile? UploadedImage;
+    private string? StatusMessage;
+
+    protected override void OnInitialized()
+    {
+        var email = HttpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
+        if (string.IsNullOrWhiteSpace(email)) return;
+
+        var user = UserService.GetByEmail(email);
+        if (user == null) return;
+
+        FormModel.Email = user.Email;
+        FormModel.TwoFactor = user.TwoFactorEnabled;
+    }
+
+    private async Task SaveChangesAsync()
+    {
+        var user = UserService.GetByEmail(FormModel.Email);
+        if (user == null) return;
+
+        if (!string.IsNullOrWhiteSpace(FormModel.NewPassword))
+        {
+            if (FormModel.NewPassword != FormModel.ConfirmPassword)
+            {
+                StatusMessage = "❌ Passwords do not match.";
+                return;
+            }
+            user.HashedPassword = BCrypt.Net.BCrypt.HashPassword(FormModel.NewPassword);
+        }
+
+        user.TwoFactorEnabled = FormModel.TwoFactor;
+
+        if (UploadedImage != null)
+        {
+            var ext = Path.GetExtension(UploadedImage.Name);
+            var fileName = user.Email + ext;
+            var path = Path.Combine("wwwroot/images/ProfilePictures", fileName);
+
+            using var stream = new FileStream(path, FileMode.Create);
+            await UploadedImage.OpenReadStream(10 * 1024 * 1024).CopyToAsync(stream);
+            user.UserProfileImage = "/images/ProfilePictures/" + fileName;
+        }
+
+        UserService.Update(user);
+        StatusMessage = "✔ Changes saved successfully.";
+    }
+
+    private class UserSettingsModel
+    {
+        public string? Email { get; set; }
+        public string? NewPassword { get; set; }
+        public string? ConfirmPassword { get; set; }
+        public bool TwoFactor { get; set; }
+    }
+}
